@@ -2,64 +2,61 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Este script controla el comportamiento de un enemigo que persigue al jugador,
-// puede recibir daño, morir y otorgar puntos al morir.
-public class EnemyControler : MonoBehaviour
+// Este script controla el comportamiento del enemigo tipo "hongo"
+public class HongoController : MonoBehaviour
 {
-    public int vida = 5; // Vida inicial del enemigo
-    public Transform player; // Referencia al jugador
-    public float detectionRadius = 8.0f; // Radio de detección para perseguir al jugador
-    public float speed = 5.0f; // Velocidad de movimiento del enemigo
-    public float fuerzaRebote = 10f; // Fuerza con la que el enemigo es empujado al recibir daño
+    public int vida = 2; // Vida del hongo
+    public Transform player; // Referencia al jugador para poder seguirlo
+    public float detectionRadius = 8.0f; // Distancia a la que el hongo detecta al jugador
+    public float speed = 5.0f; // Velocidad de movimiento del hongo
+    public float fuerzaRebote = 10f; // Fuerza con la que el hongo es empujado al recibir daño
 
-    public Puntos puntosScript; // Referencia al script que maneja los puntos
-    public float puntosAlMorir = 100; // Puntos que se otorgan al morir
+    public Puntos puntosScript; // Referencia al script de puntos
+    public float puntosAlMorir = 100; // Puntos que se otorgan al jugador al derrotar al hongo
 
-    private Rigidbody2D rb; // Rigidbody2D del enemigo
+    private Rigidbody2D rb;
     private Vector2 movement; // Dirección de movimiento
-    private bool enMovimiento; // Si el enemigo se está moviendo
-    private bool recibiendoDanio; // Si el enemigo está recibiendo daño
-    private bool playerVivo; // Si el jugador está vivo
-    private bool muerto; // Si el enemigo está muerto
+    private bool enMovimiento;
+    private bool recibiendoDanio;
+    private bool playerVivo;
+    private bool muerto;
 
-    private Animator animator; // Referencia al Animator
-    private Vector3 escalaOriginal; // Escala original del enemigo (para voltear sprite)
+    private Animator animator;
+    private Vector3 escalaOriginal; // Escala original para invertirla y girar el sprite
 
     void Start()
     {
-        playerVivo = true; // Se asume que el jugador inicia vivo
-        rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
-        escalaOriginal = transform.localScale;
+        playerVivo = true;
+        rb = GetComponent<Rigidbody2D>(); // Obtiene el componente Rigidbody2D del hongo
+        animator = GetComponent<Animator>(); // Obtiene el componente Animator del hongo
+        escalaOriginal = transform.localScale; // Guarda la escala original
     }
 
     void Update()
     {
-        // Solo se mueve si el jugador está vivo y el enemigo no ha muerto
+        // Solo se mueve si el jugador está vivo y el hongo no ha muerto
         if (playerVivo && !muerto)
         {
             Movimiento();
         }
 
-        // Actualiza los parámetros de animación
+        // Actualiza los parámetros del Animator
         animator.SetBool("enMovimiento", enMovimiento);
         animator.SetBool("recibeDanio", recibiendoDanio);
         animator.SetBool("Muerto", muerto);
     }
 
-    // Cuando el enemigo colisiona con el jugador
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        // Si colisiona con el jugador, le causa daño
         if (collision.gameObject.CompareTag("Player"))
         {
-            Vector2 direccionDanio = new Vector2(transform.position.x, 0);
+            Vector2 direccionDanio = new Vector2(transform.position.x, 0); // Dirección desde donde viene el daño
 
-            // Obtiene el script del jugador y le aplica daño
             Player_Movimiento player_Movimiento = collision.gameObject.GetComponent<Player_Movimiento>();
-            player_Movimiento.RecibeDanio(direccionDanio, 1);
 
-            // Revisa si el jugador murió y detiene el movimiento si es así
-            playerVivo = !player_Movimiento.muerto;
+            player_Movimiento.RecibeDanio(direccionDanio, 1);
+            playerVivo = !player_Movimiento.muerto; // Verifica si el jugador murió
             if (!playerVivo)
             {
                 enMovimiento = false;
@@ -67,15 +64,16 @@ public class EnemyControler : MonoBehaviour
         }
     }
 
-    // Movimiento del enemigo hacia el jugador si está dentro del rango de detección
     public void Movimiento()
     {
+        // Calcula la distancia entre el hongo y el jugador
         float ditanceToPlayer = Vector2.Distance(transform.position, player.position);
 
+        // Si el jugador está dentro del rango de detección, lo sigue
         if (ditanceToPlayer < detectionRadius)
         {
             Vector2 direction = (player.position - transform.position).normalized;
-            movement = new Vector2(direction.x, 0); // Solo se mueve en X
+            movement = new Vector2(direction.x, 0);
             enMovimiento = true;
         }
         else
@@ -84,7 +82,7 @@ public class EnemyControler : MonoBehaviour
             enMovimiento = false;
         }
 
-        // Cambia la dirección del sprite según la dirección de movimiento
+        // Gira el sprite del hongo según la dirección de movimiento
         if (movement.x > 0)
         {
             transform.localScale = new Vector3(Mathf.Abs(escalaOriginal.x), escalaOriginal.y, escalaOriginal.z);
@@ -94,16 +92,16 @@ public class EnemyControler : MonoBehaviour
             transform.localScale = new Vector3(-Mathf.Abs(escalaOriginal.x), escalaOriginal.y, escalaOriginal.z);
         }
 
-        // Si no está recibiendo daño, puede moverse
+        // Se mueve solo si no está recibiendo daño
         if (!recibiendoDanio)
         {
             rb.MovePosition(rb.position + movement * speed * Time.deltaTime);
         }
     }
 
-    // Cuando el enemigo es golpeado por el ataque del jugador (espada)
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        // Si es golpeado por la espada, recibe daño
         if (collision.CompareTag("Espada"))
         {
             Vector2 direccionDanio = new Vector2(collision.gameObject.transform.position.x, 0);
@@ -111,21 +109,17 @@ public class EnemyControler : MonoBehaviour
         }
     }
 
-    // Lógica para recibir daño
     public void RecibeDanio(Vector2 direccion, int cantDanio)
     {
         if (!recibiendoDanio)
         {
-            vida -= cantDanio;
+            vida -= cantDanio; // Reduce la vida
             recibiendoDanio = true;
-
-            // Si la vida llega a 0, muere
             if (vida <= 0)
             {
+                // Si su vida llega a 0, muere y otorga puntos al jugador
                 muerto = true;
                 enMovimiento = false;
-
-                // Suma puntos al jugador si el script está asignado
                 if (puntosScript != null)
                 {
                     puntosScript.SumarPuntos(puntosAlMorir);
@@ -133,7 +127,7 @@ public class EnemyControler : MonoBehaviour
             }
             else
             {
-                // Si no muere, aplica rebote y detiene el movimiento momentáneamente
+                // Si no muere, hace un rebote en la dirección opuesta
                 Vector2 rebote = new Vector2(transform.position.x - direccion.x, 0.5f).normalized;
                 rb.AddForce(rebote * fuerzaRebote, ForceMode2D.Impulse);
                 rb.velocity = Vector2.zero;
@@ -141,15 +135,15 @@ public class EnemyControler : MonoBehaviour
         }
     }
 
-    // Método llamado por animación para destruir al enemigo al morir
     void EliminarCuerpo()
     {
+        // Elimina el objeto del juego (se puede llamar con animación de muerte)
         Destroy(gameObject);
     }
 
-    // Método llamado por animación para permitir que el enemigo se mueva nuevamente
     void DesactivaDanio()
     {
+        // Permite que el hongo vuelva a moverse y recibir daño
         recibiendoDanio = false;
         rb.MovePosition(rb.position + movement * speed * Time.deltaTime);
     }
